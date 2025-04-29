@@ -1,3 +1,13 @@
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// (c) Copyright 2025 Team-Unverified-LUMS-AHB-Project. All Rights Reserved.
+//
+// File name : ahb_tb.sv
+// Title : TestBench
+// Description :
+// Notes :
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 `timescale 1ns/1ps
 
 import ahb3lite_pkg::*;
@@ -138,6 +148,66 @@ module ahb_tb(ahb_if.master ahb_master);
     //-------------------------------------------
     // Coverage Collector (Placeholder)
     //-------------------------------------------
+
+    // Coverage of Address Range
+    covergroup address_range_cg @(posedge ahb_master.HCLK);
+        option.per_instance = 1;
+        address: coverpoint ahb_master.HADDR {
+            bins low_addr  = {[32'h0000_0000 : 32'h0000_00FF]};
+            bins high_addr = {[32'h0001_0000 : 32'hFFFF_FFFF]};
+        }
+    endgroup
+
+   // Coverage of Transfer Types
+    covergroup transfer_type_cg @(posedge ahb_master.HCLK);
+        option.per_instance = 1;
+        htrans: coverpoint ahb_master.HTRANS {
+            bins IDLE    = {2'b00};
+            bins NONSEQ  = {2'b10};
+        }
+    endgroup
+
+
+    // Coverage of Burst Types
+    covergroup burst_type_cg @(posedge ahb_master.HCLK);
+        option.per_instance = 1;
+        hburst: coverpoint ahb_master.HBURST {
+            bins SINGLE  = {3'b000};
+        }
+    endgroup
+
+    // Coverage of Transfer Sizes
+    covergroup size_cg @(posedge ahb_master.HCLK);
+        option.per_instance = 1;
+        hsize: coverpoint ahb_master.HSIZE {
+            bins WORD      = {3'b010};
+        }
+    endgroup
+
+    // Coverage of Response Types
+    covergroup response_cg @(posedge ahb_master.HCLK);
+        option.per_instance = 1;
+        hresp: coverpoint ahb_master.HRESP {
+            bins OKAY  = {1'b0};
+        }
+    endgroup
+
+    // Coverage of Wait States
+    covergroup wait_state_cg @(posedge ahb_master.HCLK);
+        option.per_instance = 1;
+        hready: coverpoint ahb_master.HREADY {
+            bins WAIT_INSERTED = {1'b0};
+            bins WAIT_NONE     = {1'b1};
+        }
+    endgroup
+
+    // Instantiating covergroups
+    address_range_cg addr_cvg = new();
+    transfer_type_cg trans_cvg = new();
+    burst_type_cg burst_cvg = new();
+    size_cg size_cvg = new();
+    response_cg resp_cvg = new();
+    wait_state_cg wait_cvg = new();
 
 
 endmodule
