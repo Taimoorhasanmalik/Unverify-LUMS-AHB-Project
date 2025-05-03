@@ -2,7 +2,7 @@
 // (c) Copyright 2025 Team-Unverified-LUMS-AHB-Project. All Rights Reserved.
 //
 // File name : ahb_tb.sv
-// Title : TestBench
+// Title     : TestBench
 // Description :
 // Notes :
 //
@@ -15,110 +15,16 @@ import ahb3lite_pkg::*;
 module ahb_tb(ahb_if.master ahb_master);
 
     parameter TEST_TIMEOUT = 1_000_000;
+    
+    // Error counter
     int error_count = 0;
-    logic [15:0] test_rdata;
-
-    //-------------------------------------------
-    // Reset Task
-    //-------------------------------------------
-    task reset_dut();
-        ahb_master.HSEL   = '0;
-        ahb_master.HADDR  = '0;
-        ahb_master.HTRANS = HTRANS_IDLE;
-        ahb_master.HWRITE = 0;
-        ahb_master.HSIZE  = HSIZE_WORD;
-        ahb_master.HBURST = HBURST_SINGLE;
-        ahb_master.HPROT  = 4'b0011;
-        ahb_master.HWDATA = '0;
-        
-        ahb_master.HRESETn = 0;
-        repeat(5) @(posedge ahb_master.HCLK);
-        ahb_master.HRESETn = 1;
-        $display("[%0t] Reset Completed", $time);
-    endtask
-
-    //-------------------------------------------
-    // Single Write Task
-    //-------------------------------------------
-	task ahb_write(input logic [15:0] addr, input logic [31:0] data);
-	    // Address Phase
-	    ahb_master.HSEL   = 1'b1;
-	    ahb_master.HADDR  = addr;
-	    ahb_master.HTRANS = HTRANS_NONSEQ;
-	    ahb_master.HWRITE = 1'b1;
-	    ahb_master.HSIZE  = HSIZE_WORD;
-	    ahb_master.HBURST = HBURST_SINGLE;
-	    $display("[%0t] WR Single Addr=0x%0h", $time, addr);
-	    
-	    @(posedge ahb_master.HCLK);
-	    
-	    // Data Phase
-	    ahb_master.HWDATA = data;
-	    wait(ahb_master.HREADY);
-	    @(posedge ahb_master.HCLK);
-	    if (ahb_master.HRESP !== HRESP_OKAY) begin
-		$error("[%0t] WR Single Error: HRESP=0x%0h", $time, ahb_master.HRESP);
-		error_count++;
-	    end
-	    $display("[%0t] WR Single Data=0x%0h", $time, data);
-	    
-	    ahb_master.HTRANS = HTRANS_IDLE;
-	    ahb_master.HSEL   = 1'b0;
-	endtask
-
-    //-------------------------------------------
-    // Single Read Task
-    //-------------------------------------------
-	task ahb_read(input logic [15:0] addr, output logic [31:0] data);
-	    // Address Phase
-	    ahb_master.HSEL   = 1'b1;
-	    ahb_master.HADDR  = addr;
-	    ahb_master.HTRANS = HTRANS_NONSEQ;
-	    ahb_master.HWRITE = 1'b0;
-	    ahb_master.HSIZE  = HSIZE_WORD;
-	    ahb_master.HBURST = HBURST_SINGLE;
-	    $display("[%0t] RD Single Addr=0x%0h", $time, addr);
-	    
-	    @(posedge ahb_master.HCLK);
-	    
-	    // Data Phase
-	    wait(ahb_master.HREADY);
-	    @(posedge ahb_master.HCLK);
-	    if (ahb_master.HRESP !== HRESP_OKAY) begin
-		$error("[%0t] RD Single Error: HRESP=0x%0h", $time, ahb_master.HRESP);
-		error_count++;
-	    end
-	    @(posedge ahb_master.HCLK);
-	    data = ahb_master.HRDATA;
-	    $display("[%0t] RD Single Data=0x%0h, HRDATA=0x%0h", $time, data, ahb_master.HRDATA);
-	    
-	    ahb_master.HTRANS = HTRANS_IDLE;
-	    ahb_master.HSEL   = 1'b0;
-	endtask
-
-    //-------------------------------------------
-    // Test Scenarios
-    //-------------------------------------------
-    task test_single_rw();
-        static logic [31:0] wr_data = 32'hDEAD_BEEF;
-        static logic [31:0] rd_data;
-        
-        $display("\n[TEST1] Single Write/Read");
-        ahb_write(16'h0010, wr_data);
-        ahb_read(16'h0010, rd_data);
-        
-        if(rd_data !== wr_data) begin
-            $error("Single R/W mismatch: Exp=0x%8h Got=0x%8h", wr_data, rd_data);
-            error_count++;
-        end
-    endtask
 
     //-------------------------------------------
     // Main Test Flow
     //-------------------------------------------
     initial begin : main_test
-        reset_dut();
-        
+        ahb_master.reset_dut();
+
         fork : timeout_block
             begin
                 #TEST_TIMEOUT;
@@ -128,28 +34,180 @@ module ahb_tb(ahb_if.master ahb_master);
             end
         join_none
 
-        test_single_rw();
+        //Uncomment the relevant test to run it
+        //Comment the rest of the tests
+        byte_transfer_test();
+        half_word_transfer_test();
+        single_word_transfer_test();
+        inrc4_burst_test();
+        wrap4_burst_test();
+        incr8_burst_test();
+        wrap8_burst_test();
+        inrc16_burst_test();
+        wrap16_burst_test();
 
         disable timeout_block;
-        
-        if(error_count == 0)
+
+        if (error_count == 0)
             $display("\n[PASS] All tests completed successfully");
         else
             $display("\n[FAIL] %0d errors detected", error_count);
-        
+
         $finish;
     end
+
+    //-------------------------------------------
+    // Check Transaction Results
+    //-------------------------------------------
+    task check_result(
+        input string label,
+        input int index,
+        input logic [31:0] expected,
+        input logic [31:0] actual
+    );
+        if (actual !== expected) begin
+            $error("[%s] Mismatch @beat%0d: Exp=0x%08h Got=0x%08h", label, index, expected, actual);
+            error_count++;
+        end else begin
+            $display("[%s] Match @beat%0d: 0x%08h", label, index, actual);
+        end
+    endtask
+
+    //-------------------------------------------
+    // Test types
+    //-------------------------------------------
+    task byte_transfer_test();
+        // Test 1: Byte-Sized Transfer (HSIZE_BYTE)
+        begin
+            static logic [31:0] byte_wdata[] = '{32'h000000AA};
+            logic [31:0] byte_rdata[];
+            $display("\n[TEST1] Byte-Sized Write/Read");
+            ahb_master.ahb_write(.addr(16'h0020), .data(byte_wdata), .num_beats(1), .burst_type(HBURST_SINGLE), .size(HSIZE_BYTE));
+            ahb_master.ahb_read(.addr(16'h0020), .data(byte_rdata), .num_beats(1), .burst_type(HBURST_SINGLE), .size(HSIZE_BYTE));
+            check_result("TEST1", 0, 32'h000000AA, byte_rdata[0] & 32'h000000FF);
+        end
+    endtask
+
+    task half_word_transfer_test();
+        // Test 2: Half-Word Transfer (HSIZE_HWORD)
+        begin
+            static logic [31:0] hword_wdata[] = '{32'h0000_BEEF};
+            logic [31:0] hword_rdata[];
+            $display("\n[TEST2] Half-Word Write/Read");
+            ahb_master.ahb_write(.addr(16'h0030), .data(hword_wdata), .num_beats(1), .burst_type(HBURST_SINGLE), .size(HSIZE_HWORD));
+            ahb_master.ahb_read(.addr(16'h0030), .data(hword_rdata), .num_beats(1), .burst_type(HBURST_SINGLE), .size(HSIZE_HWORD));
+            check_result("TEST2", 0, 32'h0000BEEF, hword_rdata[0] & 32'h0000FFFF);
+        end
+    endtask
+
+    task single_word_transfer_test();
+        // Test 3: Single Word Transfer
+        begin
+            static logic [31:0] wr_data[] = '{32'hDEAD_BEEF};
+            logic [31:0] rd_data[];
+            $display("\n[TEST3] Single Word Write/Read");
+            ahb_master.ahb_write(.addr(16'h0010), .data(wr_data), .num_beats(1), .burst_type(HBURST_SINGLE), .size(HSIZE_WORD));
+            ahb_master.ahb_read(.addr(16'h0010), .data(rd_data), .num_beats(1), .burst_type(HBURST_SINGLE), .size(HSIZE_WORD));
+            check_result("TEST3", 0, wr_data[0], rd_data[0]);
+        end
+    endtask
+
+    task inrc4_burst_test();
+        // Test 4: 4-beat INCR4 Burst
+        begin
+            static logic [31:0] incr4_wdata[] = '{32'hCAFE_F00D, 32'hDEAD_BEEF, 32'hBAAD_F00D, 32'hFACE_B00C};
+            logic [31:0] incr4_rdata[];
+            $display("\n[TEST4] 4-beat INCR4 Burst");
+            ahb_master.ahb_write(.addr(16'h1000), .data(incr4_wdata), .num_beats(4), .burst_type(HBURST_INCR4), .size(HSIZE_WORD));
+            ahb_master.ahb_read(.addr(16'h1000), .data(incr4_rdata), .num_beats(4), .burst_type(HBURST_INCR4), .size(HSIZE_WORD));
+            foreach (incr4_rdata[i]) check_result("TEST4", i, incr4_wdata[i], incr4_rdata[i]);
+        end
+    endtask
+
+    task wrap4_burst_test();
+        // Test 5: 4-beat WRAP4 Burst
+        begin
+            static logic [31:0] wrap4_wdata[] = '{32'h1111_1111, 32'h2222_2222, 32'h3333_3333, 32'h4444_4444};
+            static logic [15:0] wrap4_addr = 16'h2000;
+            logic [31:0] wrap4_rdata[];
+            $display("\n[TEST5] 4-beat WRAP4 Burst");
+            ahb_master.ahb_write(.addr(wrap4_addr), .data(wrap4_wdata), .num_beats(4), .burst_type(HBURST_WRAP4), .size(HSIZE_WORD));
+            ahb_master.ahb_read(.addr(wrap4_addr), .data(wrap4_rdata), .num_beats(4), .burst_type(HBURST_WRAP4), .size(HSIZE_WORD));
+            foreach (wrap4_rdata[i]) check_result("TEST5", i, wrap4_wdata[i], wrap4_rdata[i]);
+        end
+    endtask
+
+    task incr8_burst_test();
+        // Test 6: 8-beat INCR8 Burst
+        begin
+            static logic [31:0] incr8_wdata[] = '{32'h1111_1111, 32'h2222_2222, 32'h3333_3333, 32'h4444_4444,
+                                                32'h5555_5555, 32'h6666_6666, 32'h7777_7777, 32'h8888_8888};
+            logic [31:0] incr8_rdata[];
+            $display("\n[TEST6] 8-beat INCR8 Burst");
+            ahb_master.ahb_write(.addr(16'h5000), .data(incr8_wdata), .num_beats(8), .burst_type(HBURST_INCR8), .size(HSIZE_WORD));
+            ahb_master.ahb_read(.addr(16'h5000), .data(incr8_rdata), .num_beats(8), .burst_type(HBURST_INCR8), .size(HSIZE_WORD));
+            foreach (incr8_rdata[i]) check_result("TEST6", i, incr8_wdata[i], incr8_rdata[i]);
+        end
+    endtask
+
+    task wrap8_burst_test();
+        // Test 7: 8-beat WRAP8 Burst
+        begin
+            static logic [31:0] wrap8_wdata[] = '{32'hAAAA_AAAA, 32'hBBBB_BBBB, 32'hCCCC_CCCC, 32'hDDDD_DDDD,
+                                                32'hEEEE_EEEE, 32'hFFFF_FFFF, 32'h1234_5678, 32'h8765_4321};
+            static logic [15:0] wrap8_addr = 16'h3000;
+            logic [31:0] wrap8_rdata[];
+            $display("\n[TEST7] 8-beat WRAP8 Burst");
+            ahb_master.ahb_write(.addr(wrap8_addr), .data(wrap8_wdata), .num_beats(8), .burst_type(HBURST_WRAP8), .size(HSIZE_WORD));
+            ahb_master.ahb_read(.addr(wrap8_addr), .data(wrap8_rdata), .num_beats(8), .burst_type(HBURST_WRAP8), .size(HSIZE_WORD));
+            foreach (wrap8_rdata[i]) check_result("TEST7", i, wrap8_wdata[i], wrap8_rdata[i]);
+        end
+    endtask
+
+    task inrc16_burst_test();
+        // Test 8: 16-beat INCR16 Burst
+        begin
+            static logic [31:0] incr16_wdata[] = '{
+                32'hBBBB_1000, 32'hBBBB_1001, 32'hBBBB_1002, 32'hBBBB_1003,
+                32'hBBBB_1004, 32'hBBBB_1005, 32'hBBBB_1006, 32'hBBBB_1007,
+                32'hBBBB_1008, 32'hBBBB_1009, 32'hBBBB_100A, 32'hBBBB_100B,
+                32'hBBBB_100C, 32'hBBBB_100D, 32'hBBBB_100E, 32'hBBBB_100F
+            };
+            logic [31:0] incr16_rdata[];
+            $display("\n[TEST8] 16-beat INCR16 Burst");
+            ahb_master.ahb_write(.addr(16'h6000), .data(incr16_wdata), .num_beats(16), .burst_type(HBURST_INCR16), .size(HSIZE_WORD));
+            ahb_master.ahb_read(.addr(16'h6000), .data(incr16_rdata), .num_beats(16), .burst_type(HBURST_INCR16), .size(HSIZE_WORD));
+            foreach (incr16_rdata[i]) check_result("TEST8", i, incr16_wdata[i], incr16_rdata[i]);
+        end
+    endtask
+
+    task wrap16_burst_test();
+        // Test 9: 16-beat WRAP16 Burst
+        begin
+            static logic [31:0] wrap16_wdata[] = '{
+                32'hAAAA_0000, 32'hAAAA_0001, 32'hAAAA_0002, 32'hAAAA_0003,
+                32'hAAAA_0004, 32'hAAAA_0005, 32'hAAAA_0006, 32'hAAAA_0007,
+                32'hAAAA_0008, 32'hAAAA_0009, 32'hAAAA_000A, 32'hAAAA_000B,
+                32'hAAAA_000C, 32'hAAAA_000D, 32'hAAAA_000E, 32'hAAAA_000F
+            };
+            static logic [15:0] wrap16_addr = 16'h4000;
+            logic [31:0] wrap16_rdata[];
+            $display("\n[TEST9] 16-beat WRAP16 Burst");
+            ahb_master.ahb_write(.addr(wrap16_addr), .data(wrap16_wdata), .num_beats(16), .burst_type(HBURST_WRAP16), .size(HSIZE_WORD));
+            ahb_master.ahb_read(.addr(wrap16_addr), .data(wrap16_rdata), .num_beats(16), .burst_type(HBURST_WRAP16), .size(HSIZE_WORD));
+            foreach (wrap16_rdata[i]) check_result("TEST9", i, wrap16_wdata[i], wrap16_rdata[i]);
+        end
+    endtask
 
     //-------------------------------------------
     // Assertion Monitor (Placeholder)
     //-------------------------------------------
 
 
-    //-------------------------------------------
-    // Coverage Collector (Placeholder)
-    //-------------------------------------------
 
-    // Coverage of Address Range
+    //-------------------------------------------
+    // Coverage Groups
+    //-------------------------------------------
     covergroup address_range_cg @(posedge ahb_master.HCLK);
         option.per_instance = 1;
         address: coverpoint ahb_master.HADDR {
@@ -158,7 +216,6 @@ module ahb_tb(ahb_if.master ahb_master);
         }
     endgroup
 
-   // Coverage of Transfer Types
     covergroup transfer_type_cg @(posedge ahb_master.HCLK);
         option.per_instance = 1;
         htrans: coverpoint ahb_master.HTRANS {
@@ -167,8 +224,6 @@ module ahb_tb(ahb_if.master ahb_master);
         }
     endgroup
 
-
-    // Coverage of Burst Types
     covergroup burst_type_cg @(posedge ahb_master.HCLK);
         option.per_instance = 1;
         hburst: coverpoint ahb_master.HBURST {
@@ -176,7 +231,6 @@ module ahb_tb(ahb_if.master ahb_master);
         }
     endgroup
 
-    // Coverage of Transfer Sizes
     covergroup size_cg @(posedge ahb_master.HCLK);
         option.per_instance = 1;
         hsize: coverpoint ahb_master.HSIZE {
@@ -184,7 +238,6 @@ module ahb_tb(ahb_if.master ahb_master);
         }
     endgroup
 
-    // Coverage of Response Types
     covergroup response_cg @(posedge ahb_master.HCLK);
         option.per_instance = 1;
         hresp: coverpoint ahb_master.HRESP {
@@ -192,7 +245,6 @@ module ahb_tb(ahb_if.master ahb_master);
         }
     endgroup
 
-    // Coverage of Wait States
     covergroup wait_state_cg @(posedge ahb_master.HCLK);
         option.per_instance = 1;
         hready: coverpoint ahb_master.HREADY {
@@ -209,5 +261,5 @@ module ahb_tb(ahb_if.master ahb_master);
     response_cg resp_cvg = new();
     wait_state_cg wait_cvg = new();
 
-
 endmodule
+
