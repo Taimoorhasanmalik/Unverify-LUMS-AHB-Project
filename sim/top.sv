@@ -33,4 +33,7 @@ module top;
         .ahb_master(ahb_if_inst.master)
     );
 
+    bind dut_inst properties p1 (ahb_if_inst.master);
+
+
 endmodule
