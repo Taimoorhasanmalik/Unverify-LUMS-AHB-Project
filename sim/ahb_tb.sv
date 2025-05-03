@@ -32,7 +32,6 @@ module ahb_tb(ahb_if.master ahb_master);
         ahb_master.HWDATA = '0;
         
         ahb_master.HRESETn = 0;
-        $display("[%0t] Reset Started", $time);
 
         repeat(5) @(posedge ahb_master.HCLK);
         ahb_master.HRESETn = 1;
