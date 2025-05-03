@@ -14,7 +14,9 @@ module properties  (
 );
 
 property reset_async_p;
-    @(posedge properties_if.HRESETn) $rose(properties_if.HCLK);
+    @(properties_if.HCLK) 
+        $rose(properties_if.HRESETn) |->
+            $rose(properties_if.HCLK);
 endproperty
 
 reset_async_as: assert property (reset_async_p) 
