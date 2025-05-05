@@ -36,6 +36,7 @@ interface ahb_if(input logic HCLK);
         master_cb.HPROT  <= 4'b0011;
         master_cb.HWDATA <= '0;
 
+	$display("[%0t] Reset Start", $time);
         HRESETn = 0;
         repeat(5) @(master_cb);
         HRESETn = 1;
@@ -47,7 +48,7 @@ interface ahb_if(input logic HCLK);
     //-------------------------------------------
     task ahb_write(
         input logic [15:0] addr,
-        input logic [31:0] data[],
+        input logic [31:0] data[0:15],
         input int num_beats,
         input logic [2:0] burst_type,
         input logic [2:0] size,
@@ -57,7 +58,12 @@ interface ahb_if(input logic HCLK);
         int i;
         current_addr = addr;
 
-        for (i = 0; i < num_beats; i++) begin
+        if (!validate_burst(burst_type, num_beats)) begin
+            $error("Invalid burst configuration");
+            return;
+        end
+
+        for (int i = 0; i < num_beats; i++) begin
             // Address Phase
             master_cb.HADDR  <= current_addr;
             master_cb.HTRANS <= (i == 0) ? HTRANS_NONSEQ : HTRANS_SEQ;
@@ -71,6 +77,7 @@ interface ahb_if(input logic HCLK);
             @(master_cb);
             master_cb.HWDATA <= data[i];
             wait_ready();
+
             current_addr = calc_next_addr(current_addr, burst_type, size);
         end
 
@@ -84,18 +91,21 @@ interface ahb_if(input logic HCLK);
     //-------------------------------------------
     task ahb_read(
         input  logic [15:0] addr,
-        output logic [31:0] data[],
+        output logic [31:0] data[0:15],
         input  int num_beats,
         input  logic [2:0] burst_type,
         input  logic [2:0] size,
         input  logic [3:0] prot = 4'b0011
     );
         logic [15:0] current_addr;
-        int i;
-        data = new[num_beats];
         current_addr = addr;
 
-        for (i = 0; i < num_beats; i++) begin
+        if (!validate_burst(burst_type, num_beats)) begin
+            $error("Invalid burst configuration");
+            return;
+        end
+
+        for (int i = 0; i < num_beats; i++) begin
             master_cb.HADDR  <= current_addr;
             master_cb.HTRANS <= (i == 0) ? HTRANS_NONSEQ : HTRANS_SEQ;
             master_cb.HWRITE <= HREAD_OP;
@@ -106,7 +116,8 @@ interface ahb_if(input logic HCLK);
 
             wait_ready();
             repeat(3)@(master_cb);
-            data[i] = master_cb.HRDATA;
+            data[i] = master_cb.HRDATA; 
+            $display(" Beat %0d, address = 0x%8h, Got = 0x%08h", i, current_addr, data[i]);
             current_addr = calc_next_addr(current_addr, burst_type, size);
         end
 
@@ -190,3 +201,4 @@ interface ahb_if(input logic HCLK);
     );
 
 endinterface
+
