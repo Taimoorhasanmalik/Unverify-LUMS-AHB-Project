@@ -43,7 +43,7 @@ regress:
 			-l $(REGRESS)/$(basename $(notdir $(test))).log;)
 
 clean:
-	@rm -rf $(COVDIR) $(REGRESS) INCA_libs xcelium.d xrun.history *.log *.key *.vcd *.fsdb *.shm *.ucdb *.vdb *.cdd .simvision
+	@rm -rf $(COVDIR) $(REGRESS) INCA_libs xcelium.d xrun.history *.log *.key *.vcd *.fsdb *.shm *.ucdb *.vdb *.cdd .simvision jgproject
 	@echo "Clean complete."
 
 help:
