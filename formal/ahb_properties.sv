@@ -9,7 +9,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-module ahb_properties  (
+module ahb_properties_master  (
     input logic        HCLK,
     input logic        HRESETn,
     output logic        HSEL,
@@ -25,6 +25,8 @@ module ahb_properties  (
     input logic        HREADYOUT,
     input logic        HRESP
 );
+
+import ahb3lite_pkg::*;
 
 property successful_transfer;
     @(posedge HCLK) HREADY |-> !HRESP;
@@ -42,13 +44,57 @@ transfer_pending_as: assert property (transfer_pending)
 
 
 property error_response;
-    @(posedge HCLK) HRESP |-> !HREADY ##1 HREADY;
+    @(posedge HCLK) !HREADY |-> HRESP ##1 HREADY;
 endproperty
 
 error_response_as: assert property (error_response) 
     else $error("Assertion error_response failed! at time [%0t]",$time);
 
 
+property valid_addresses_burst_inc_4_p;
+    @(posedge HCLK) HBURST == HBURST_WRAP4 || HBURST_INCR4 |->(HADDR % 4) == 0;
+
+endproperty
+
+valid_addresses_burst_inc_4_assume:assume property (valid_addresses_burst_inc_4_p);
+
+property valid_addresses_burst_inc_8_p;
+    @(posedge HCLK) HBURST == HBURST_WRAP8 || HBURST_INCR8 |->(HADDR % 8) == 0;
+
+endproperty
+
+valid_addresses_burst_inc_8_assume:assume property (valid_addresses_burst_inc_8_p);
+
+property valid_addresses_burst_inc_16_p;
+    @(posedge HCLK) HBURST == HBURST_WRAP16 || HBURST_INCR16 |->(HADDR % 16) == 0;
+
+endproperty
+
+valid_addresses_burst_inc_16_assume:assume property (valid_addresses_burst_inc_16_p);
+
+property wrapping_4_boundary_check_p;
+    @(posedge HCLK) disable iff (!HRESETn) HBURST == HBURST_WRAP4 |->  (HADDR & !(4 * HSIZE)) <= HADDR <= ((HADDR & !(4 * HSIZE)) + (4 * HSIZE));
+endproperty
+
+wrapping_4_boundary_check_as: assert property (wrapping_4_boundary_check_p);
+
+property wrapping_8_boundary_check_p;
+    @(posedge HCLK) disable iff (!HRESETn) HBURST == HBURST_WRAP8 |->  ((HADDR & !(8 * HSIZE)) <= HADDR <= (HADDR & !(8 * HSIZE)) + (8 * HSIZE));
+endproperty
+
+wrapping_8_boundary_check_as: assert property (wrapping_8_boundary_check_p);
+
+property wrapping_16_boundary_check_p;
+    @(posedge HCLK) disable iff (!HRESETn) HBURST == HBURST_WRAP16 |->  ((HADDR & !(16 * HSIZE)) <= HADDR <= (HADDR & !(16 * HSIZE)) + (16 * HSIZE));
+endproperty
+
+wrapping_16_boundary_check_as: assert property (wrapping_16_boundary_check_p);
+
+property inc_16_boundary_check_p;
+    @(posedge HCLK) disable iff (!HRESETn) HBURST == HBURST_INCR16 |->  ((HADDR & !(16 * HSIZE)) <= HADDR <= (HADDR & !(16 * HSIZE)) + (16 * HSIZE));
+endproperty
+
+inc_16_boundary_check_p_as: assert property (inc_16_boundary_check_p);
 
 
 

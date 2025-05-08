@@ -68,10 +68,11 @@ module top;
         .HREADYOUT(HREADYOUT),
         .HRESP(HRESP)
     );
-    bind dut_inst ahb_properties p1 (
+    bind dut_inst ahb_properties_master p1 (
         .HCLK, .HRESETn, .HSEL, .HADDR, .HTRANS, .HRESP
     );
     
+
 `endif
 
 
