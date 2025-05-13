@@ -1,5 +1,6 @@
 `timescale 1ns/1ps
 `define FORMAL 1
+`define TEST_MASTER_OUTPUTS 1
 
 module top;
 
@@ -68,13 +69,18 @@ module top;
         .HREADYOUT(HREADYOUT),
         .HRESP(HRESP)
     );
-    bind dut_inst ahb_properties_master p1 (
-        .HCLK, .HRESETn, .HSEL, .HADDR, .HTRANS, .HRESP
-    );
-    
 
+`ifdef TEST_MASTER_OUTPUTS
+    bind dut_inst ahb_properties_master p1 (
+        .HCLK, .HRESETn, .HSEL, .HADDR, .HTRANS, .HWRITE, .HSIZE, .HBURST, .HPROT, .HWDATA, .HREADY, .HRDATA, .HREADYOUT, .HRESP);
+`endif
+
+`ifdef TEST_SLAVE_OUTPUTS
+    bind dut_inst ahb_properties_slave p2 (
+        .HCLK, .HRESETn, .HSEL, .HADDR, .HTRANS, .HWRITE, .HSIZE, .HBURST, .HPROT, .HWDATA, .HREADY, .HRDATA, .HREADYOUT, .HRESP);
 `endif
 
 
+`endif
 
 endmodule

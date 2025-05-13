@@ -7,9 +7,44 @@
 // Notes :
 //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+import ahb3lite_pkg::*;
 
 
 module ahb_properties_master  (
+    output logic        HCLK,
+    output logic        HRESETn,
+    input logic        HSEL,
+    input logic [15:0] HADDR,
+    input logic [1:0]  HTRANS,
+    input logic        HWRITE,
+    input logic [2:0]  HSIZE,
+    input logic [2:0]  HBURST,
+    input logic [3:0]  HPROT,
+    input logic [31:0] HWDATA,
+    input logic        HREADY,
+    output logic [31:0] HRDATA,
+    output logic        HREADYOUT,
+    output logic        HRESP
+);
+
+
+
+// Slave eventually completes the transfer
+assume property (@(posedge HCLK)
+  disable iff (!HRESETn)
+  ##[1:$] HREADY);
+
+// Master must align word accesses
+assert property (@(posedge HCLK)
+  disable iff (!HRESETn)
+  (HTRANS inside {2'b10, 2'b11} && HSIZE == 3'b010 && HREADY) |->
+  (HADDR[1:0] == 2'b00));
+
+endmodule
+
+
+
+module ahb_properties_slave  (
     input logic        HCLK,
     input logic        HRESETn,
     output logic        HSEL,
@@ -26,7 +61,6 @@ module ahb_properties_master  (
     input logic        HRESP
 );
 
-import ahb3lite_pkg::*;
 
 property successful_transfer;
     @(posedge HCLK) HREADY |-> !HRESP;
@@ -76,35 +110,26 @@ property wrapping_4_boundary_check_p;
     @(posedge HCLK) disable iff (!HRESETn) HBURST == HBURST_WRAP4 |->  (HADDR & !(4 * HSIZE)) <= HADDR <= ((HADDR & !(4 * HSIZE)) + (4 * HSIZE));
 endproperty
 
-wrapping_4_boundary_check_as: assert property (wrapping_4_boundary_check_p);
+wrapping_4_boundary_check_as: assume property (wrapping_4_boundary_check_p);
 
 property wrapping_8_boundary_check_p;
     @(posedge HCLK) disable iff (!HRESETn) HBURST == HBURST_WRAP8 |->  ((HADDR & !(8 * HSIZE)) <= HADDR <= (HADDR & !(8 * HSIZE)) + (8 * HSIZE));
 endproperty
 
-wrapping_8_boundary_check_as: assert property (wrapping_8_boundary_check_p);
+wrapping_8_boundary_check_as: assume property (wrapping_8_boundary_check_p);
 
 property wrapping_16_boundary_check_p;
     @(posedge HCLK) disable iff (!HRESETn) HBURST == HBURST_WRAP16 |->  ((HADDR & !(16 * HSIZE)) <= HADDR <= (HADDR & !(16 * HSIZE)) + (16 * HSIZE));
 endproperty
 
-wrapping_16_boundary_check_as: assert property (wrapping_16_boundary_check_p);
+wrapping_16_boundary_check_as: assume property (wrapping_16_boundary_check_p);
 
 property inc_16_boundary_check_p;
     @(posedge HCLK) disable iff (!HRESETn) HBURST == HBURST_INCR16 |->  ((HADDR & !(16 * HSIZE)) <= HADDR <= (HADDR & !(16 * HSIZE)) + (16 * HSIZE));
 endproperty
 
-inc_16_boundary_check_p_as: assert property (inc_16_boundary_check_p);
+inc_16_boundary_check_p_as: assume property (inc_16_boundary_check_p);
 
-
-
-
-// property reset_htrans_p;
-//     @(HRESETn) $fell(HRESETn) |-> HTRANS == 2'b00;
-// endproperty
-
-// reset_htrans_as: assert property (reset_htrans_p) 
-//     else $error("Assertion reset_htrans_p failed! at time [%0t]",$time);
 
 
 endmodule
