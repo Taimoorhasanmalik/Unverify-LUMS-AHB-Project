@@ -4,11 +4,13 @@ TOP        := top
 FLIST      := -f ./flist.f
 COVFILE    := ./covfile.ccf
 WAVEFORM   := ./signals.svwf
-
+FORMAL     := jaspergold
+MASTER_TEST ?= 0
 # Directory Structure
 COVDIR     := ./cov
 REGRESS    := ./regression_logs
 XCELIUM_LIB:= ./xcelium.d
+TCL_FILE   := ./ahb_setup.tcl
 
 # Xcelium Compilation/Simulation Options
 XRUN_OPTS  := -64bit -sv -access +rwc -xmlibdirname $(XCELIUM_LIB) -clean -licqueue -nowarn DSEM2009 -timescale 1ns/1ps
@@ -32,6 +34,9 @@ gui:
 cov:
 	@mkdir -p $(COVDIR)
 	$(XRUN) $(XRUN_OPTS) $(FLIST) $(COV_OPTS) -top $(TOP)
+
+formal_test:
+	MASTER_TEST=$(MASTER_TEST) jaspergold ahb_setup.tcl
 
 regress:
 	@mkdir -p $(REGRESS)
