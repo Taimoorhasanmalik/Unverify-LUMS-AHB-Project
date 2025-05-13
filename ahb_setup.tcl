@@ -23,4 +23,3 @@ elaborate -top top
 clock HCLK
 reset ~HRESETn
 
-
