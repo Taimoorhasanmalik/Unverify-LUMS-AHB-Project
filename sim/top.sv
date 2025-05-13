@@ -1,12 +1,19 @@
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// (c) Copyright 2025 Team-Unverified-LUMS-AHB-Project. All Rights Reserved.
+//
+// File name : top.sv
+// Title : top
+// Description : File for calling dut and binding it with the respective testing modules
+// Notes :
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 `timescale 1ns/1ps
-// `define FORMAL 
-// `define TEST_MASTER_OUTPUTS 1
-// `define TEST_SLAVE_OUTPUTS
 
 module top;
 
 
-`ifdef SIM
+`ifndef FORMAL
     logic HCLK;
     initial begin
       HCLK = 0;
@@ -15,7 +22,6 @@ module top;
     assign ahb_if_inst.HREADY = ahb_if_inst.HREADYOUT;
     ahb_if ahb_if_inst(.HCLK(HCLK));
     
-    // ahb_wrapper wrapper_inst(HCLK);
     ahb3liten dut_inst (
         .HCLK(HCLK),
         .HRESETn(ahb_if_inst.HRESETn),
@@ -71,18 +77,19 @@ module top;
         .HRESP(HRESP)
     );
 
-`ifdef TEST_MASTER_OUTPUTS
-    bind dut_inst ahb_properties_master p1 (
-        .HCLK, .HRESETn, .HSEL, .HADDR, .HTRANS, .HWRITE, .HSIZE, .HBURST, .HPROT, .HWDATA, .HREADY, .HRDATA, .HREADYOUT, .HRESP);
+    `ifdef TEST_MASTER_OUTPUTS
+        bind dut_inst ahb_properties_master p1 (
+            .HCLK, .HRESETn, .HSEL, .HADDR, .HTRANS, .HWRITE, .HSIZE, .HBURST, .HPROT, .HWDATA, .HREADY, .HRDATA, .HREADYOUT, .HRESP);
+    `endif
+
+    `ifdef TEST_SLAVE_OUTPUTS
+        bind dut_inst ahb_properties_slave p2 (
+            .HCLK, .HRESETn, .HSEL, .HADDR, .HTRANS, .HWRITE, .HSIZE, .HBURST, .HPROT, .HWDATA, .HREADY, .HRDATA, .HREADYOUT, .HRESP);
+    `endif
+
+
 `endif
 
-`ifdef TEST_SLAVE_OUTPUTS
-    bind dut_inst ahb_properties_slave p2 (
-        .HCLK, .HRESETn, .HSEL, .HADDR, .HTRANS, .HWRITE, .HSIZE, .HBURST, .HPROT, .HWDATA, .HREADY, .HRDATA, .HREADYOUT, .HRESP);
-`endif
-
-
-`endif
     bind ahb3liten ahb_coverage ahb_cov_inst (
     .HCLK(HCLK),
     .HADDR(HADDR),
