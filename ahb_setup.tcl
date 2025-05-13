@@ -4,14 +4,7 @@ set MASTER_TEST 0
 
 if {[info exists ::env(MASTER_TEST)]} {
     set MASTER_TEST $::env(MASTER_TEST)
-}
-
-
-
-
-
-
-
+} # Takes input from make file
 
 analyze -sv packages/ahb3lite_pkg.sv
 
@@ -29,7 +22,7 @@ if {$MASTER_TEST} {
 } else {
     puts "SLAVE_TEST analysis is ENABLED"
     analyze -sv +define+FORMAL+TEST_SLAVE_OUTPUTS sim/top.sv
-}
+} # USED in FORMAL ONLY for separate master and slave perspectives
 
 elaborate -top top
 

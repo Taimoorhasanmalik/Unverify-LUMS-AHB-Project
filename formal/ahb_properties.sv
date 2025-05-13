@@ -2,7 +2,7 @@
 // (c) Copyright 2025 Team-Unverified-LUMS-AHB-Project. All Rights Reserved.
 //
 // File name : ahb_properties.sv
-// Title : TestBench
+// Title : FORMAL PROPERTIES
 // Description : File for defining properties and their corresponding assertions
 // Notes :
 //
