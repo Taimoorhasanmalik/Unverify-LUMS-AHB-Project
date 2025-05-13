@@ -34,6 +34,14 @@ module top;
     );
 
     bind dut_inst properties p1 (ahb_if_inst.master);
-
+    bind ahb3liten ahb_coverage ahb_cov_inst (
+    .HCLK(HCLK),
+    .HADDR(HADDR),
+    .HTRANS(HTRANS),
+    .HBURST(HBURST),
+    .HSIZE(HSIZE),
+    .HREADY(HREADY),
+    .HRESP(HRESP)
+    );
 
 endmodule
