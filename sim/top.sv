@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
-`define FORMAL 1
-`define TEST_MASTER_OUTPUTS 1
+// `define FORMAL 
+// `define TEST_MASTER_OUTPUTS 1
+// `define TEST_SLAVE_OUTPUTS
 
 module top;
 

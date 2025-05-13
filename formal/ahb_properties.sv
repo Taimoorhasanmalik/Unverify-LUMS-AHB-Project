@@ -11,8 +11,8 @@ import ahb3lite_pkg::*;
 
 
 module ahb_properties_master  (
-    output logic        HCLK,
-    output logic        HRESETn,
+    input logic        HCLK,
+    input logic        HRESETn,
     input logic        HSEL,
     input logic [15:0] HADDR,
     input logic [1:0]  HTRANS,
@@ -27,8 +27,6 @@ module ahb_properties_master  (
     output logic        HRESP
 );
 
-
-
 // Slave eventually completes the transfer
 assume property (@(posedge HCLK)
   disable iff (!HRESETn)
@@ -39,6 +37,7 @@ assert property (@(posedge HCLK)
   disable iff (!HRESETn)
   (HTRANS inside {2'b10, 2'b11} && HSIZE == 3'b010 && HREADY) |->
   (HADDR[1:0] == 2'b00));
+
 
 endmodule
 
