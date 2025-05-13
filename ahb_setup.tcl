@@ -1,25 +1,37 @@
 clear -all
 
-# Compile packages
-analyze -sv09 packages/ahb3lite_pkg.sv
+set MASTER_TEST 0
 
-# Compile interface
-analyze -sv09 include/ahb_if.sv
-
-# Compile properties
-analyze -sv09 formal/ahb_properties.sv
+if {[info exists ::env(MASTER_TEST)]} {
+    set MASTER_TEST $::env(MASTER_TEST)
+}
 
 
-# Compile RTL
-analyze -sv09 rtl/mem.sv
-analyze -sv09 rtl/design.sv
 
-# Compile Testbenche
-analyze -sv09 sim/ahb_tb.sv
-analyze -sv09 sim/top.sv
 
-elaborate -top top 
+
+
+
+
+analyze -sv packages/ahb3lite_pkg.sv
+
+analyze -sv include/ahb_if.sv
+
+analyze -sv formal/ahb_properties.sv
+
+analyze -sv rtl/mem.sv
+analyze -sv rtl/design.sv
+
+analyze -sv sim/ahb_tb.sv
+if {$MASTER_TEST} {
+    puts "MASTER_TEST analysis is ENABLED"
+    analyze -sv +define+FORMAL+TEST_MASTER_OUTPUTS sim/top.sv
+} else {
+    puts "SLAVE_TEST analysis is ENABLED"
+    analyze -sv +define+FORMAL+TEST_SLAVE_OUTPUTS sim/top.sv
+}
+
+elaborate -top top
 
 clock HCLK
 reset ~HRESETn
-
