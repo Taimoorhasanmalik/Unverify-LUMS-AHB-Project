@@ -4,11 +4,13 @@ TOP        := top
 FLIST      := -f ./flist.f
 COVFILE    := ./covfile.ccf
 WAVEFORM   := ./signals.svwf
-
+FORMAL     := jaspergold
+MASTER_TEST ?= 0
 # Directory Structure
 COVDIR     := ./cov
 REGRESS    := ./regression_logs
 XCELIUM_LIB:= ./xcelium.d
+TCL_FILE   := ./ahb_setup.tcl
 
 # Xcelium Compilation/Simulation Options
 XRUN_OPTS  := -64bit -sv -access +rwc -xmlibdirname $(XCELIUM_LIB) -clean -licqueue -nowarn DSEM2009 -timescale 1ns/1ps
@@ -35,6 +37,9 @@ cov:
 imc:
 	imc -load test &
 
+formal_test:
+	MASTER_TEST=$(MASTER_TEST) jaspergold ahb_setup.tcl
+
 regress:
 	@mkdir -p $(REGRESS) $(COVDIR)
 	@echo "Running Regression Suite with Coverage..."
@@ -45,7 +50,7 @@ regress:
 			-l $(REGRESS)/$(basename $(notdir $(test))).log
 
 clean:
-	@rm -rf $(COVDIR) $(REGRESS) INCA_libs xcelium.d xrun.history *.log *.key *.vcd *.fsdb *.shm *.ucdb *.vdb *.cdd .simvision
+	@rm -rf $(COVDIR) $(REGRESS) INCA_libs xcelium.d xrun.history *.log *.key *.vcd *.fsdb *.shm *.ucdb *.vdb *.cdd .simvision jgproject
 	@echo "Clean complete."
 
 help:
