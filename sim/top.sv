@@ -83,5 +83,14 @@ module top;
 
 
 `endif
+    bind ahb3liten ahb_coverage ahb_cov_inst (
+    .HCLK(HCLK),
+    .HADDR(HADDR),
+    .HTRANS(HTRANS),
+    .HBURST(HBURST),
+    .HSIZE(HSIZE),
+    .HREADY(HREADY),
+    .HRESP(HRESP)
+    );
 
 endmodule

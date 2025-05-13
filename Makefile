@@ -15,7 +15,7 @@ TCL_FILE   := ./ahb_setup.tcl
 # Xcelium Compilation/Simulation Options
 XRUN_OPTS  := -64bit -sv -access +rwc -xmlibdirname $(XCELIUM_LIB) -clean -licqueue -nowarn DSEM2009 -timescale 1ns/1ps
 
-COV_OPTS   := -coverage all -covfile $(COVFILE) -covoverwrite
+COV_OPTS := -coverage all -covfile $(COVFILE) -covoverwrite -covdut ahb3liten
 
 # Primary Targets
 .PHONY: all gui cov regress clean help
@@ -33,19 +33,21 @@ gui:
 
 cov:
 	@mkdir -p $(COVDIR)
-	$(XRUN) $(XRUN_OPTS) $(FLIST) $(COV_OPTS) -top $(TOP)
+	$(XRUN) $(XRUN_OPTS) $(FLIST) $(COV_OPTS) -top $(TOP) -covdb $(COVDIR)/test.ucdb
+imc:
+	imc -load test &
 
 formal_test:
 	MASTER_TEST=$(MASTER_TEST) jaspergold ahb_setup.tcl
 
 regress:
-	@mkdir -p $(REGRESS)
-	@echo "Running Regression Suite..."
+	@mkdir -p $(REGRESS) $(COVDIR)
+	@echo "Running Regression Suite with Coverage..."
 	$(foreach test,$(wildcard tests/*.test), \
-		$(XRUN) $(XRUN_OPTS) $(FLIST) \
+		$(XRUN) $(XRUN_OPTS) $(FLIST) $(COV_OPTS) \
 			-top $(TOP) \
 			-define $(subst .test,,$(notdir $(test))) \
-			-l $(REGRESS)/$(basename $(notdir $(test))).log;)
+			-l $(REGRESS)/$(basename $(notdir $(test))).log
 
 clean:
 	@rm -rf $(COVDIR) $(REGRESS) INCA_libs xcelium.d xrun.history *.log *.key *.vcd *.fsdb *.shm *.ucdb *.vdb *.cdd .simvision jgproject
@@ -57,8 +59,7 @@ help:
 	@echo "Targets:"
 	@echo "  make           - Compile & run simulation (batch mode)"
 	@echo "  make gui       - Run simulation with GUI waveform viewer"
-	@echo "  make cov       - Run with coverage collection"
-	@echo "  make regress   - Execute regression test suite"
+	@echo "  make cov       - Run with coverage collection (DUT only)"
+	@echo "  make regress   - Execute regression test suite with coverage"
 	@echo "  make clean     - Remove all generated files"
 	@echo "  make help      - Show this help message"
-
