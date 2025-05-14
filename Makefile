@@ -44,11 +44,9 @@ formal_test:
 regress:
 	@mkdir -p $(REGRESS) $(COVDIR)
 	@echo "Running Regression Suite with Coverage..."
-	$(foreach test,$(wildcard tests/*.test), \
-		$(XRUN) $(XRUN_OPTS) $(FLIST) $(COV_OPTS) \
-			-top $(TOP) \
-			-define $(subst .test,,$(notdir $(test))) \
-			-l $(REGRESS)/$(basename $(notdir $(test))).log
+	$(XRUN) $(XRUN_OPTS) $(FLIST) $(COV_OPTS) \
+		-top $(TOP) \
+		-l $(REGRESS)/regression.log
 
 clean:
 	@rm -rf $(COVDIR) $(REGRESS) INCA_libs xcelium.d xrun.history *.log *.key *.vcd *.fsdb *.shm *.ucdb *.vdb *.cdd .simvision jgproject
