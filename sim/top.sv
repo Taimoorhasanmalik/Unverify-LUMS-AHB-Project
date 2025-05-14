@@ -90,6 +90,7 @@ module top;
 
 `endif
 
+`ifndef FORMAL
     bind ahb3liten ahb_coverage ahb_cov_inst (
     .HCLK(HCLK),
     .HADDR(HADDR),
@@ -99,5 +100,5 @@ module top;
     .HREADY(HREADY),
     .HRESP(HRESP)
     );
-
+`endif
 endmodule

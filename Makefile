@@ -37,8 +37,9 @@ cov:
 imc:
 	imc -load test &
 
+# To run Master tests use make formal_test MASTER_TEST=1
 formal_test:
-	MASTER_TEST=$(MASTER_TEST) jaspergold ahb_setup.tcl
+	MASTER_TEST=$(MASTER_TEST) jaspergold ahb_setup.tcl 
 
 regress:
 	@mkdir -p $(REGRESS) $(COVDIR)
