@@ -38,7 +38,11 @@ interface ahb_if(input logic HCLK);
 
 	$display("[%0t] Reset Start", $time);
         HRESETn = 0;
-        repeat(5) @(master_cb);
+        repeat(3) @(master_cb);
+        HRESETn = 1;
+        repeat(3) @(master_cb);
+        HRESETn = 0;
+        repeat(3) @(master_cb);
         HRESETn = 1;
         $display("[%0t] Reset Completed", $time);
     endtask
@@ -52,9 +56,11 @@ interface ahb_if(input logic HCLK);
         input int num_beats,
         input logic [2:0] burst_type,
         input logic [2:0] size,
+        input logic insert_busy = 0,
         input logic [3:0] prot = 4'b0011
     );
         logic [15:0] current_addr;
+        logic [31:0] aligned_data;
         int i;
         current_addr = addr;
 
@@ -75,8 +81,19 @@ interface ahb_if(input logic HCLK);
 
             // Data Phase
             @(master_cb);
-            master_cb.HWDATA <= data[i];
+            case (size)
+                HSIZE_BYTE:     aligned_data = data[i][7:0] << (8 * current_addr[1:0]);
+                HSIZE_HWORD:    aligned_data = data[i][15:0] << (8 * {current_addr[1] , 1'b0});
+                default:        aligned_data = data[i];
+            endcase
+            master_cb.HWDATA <= aligned_data;
             wait_ready();
+
+            if (insert_busy && i < num_beats - 1) 
+            begin
+                master_cb.HTRANS <= HTRANS_BUSY;
+                @(master_cb);
+            end
 
             current_addr = calc_next_addr(current_addr, burst_type, size);
         end
@@ -190,8 +207,7 @@ interface ahb_if(input logic HCLK);
     // Modport
     //-------------------------------------------
     modport master(
-        output HRESETn,
-        input  HCLK,
+        input  HCLK, HRESETn,
         output HSEL, HADDR, HTRANS, HWRITE, HSIZE, HBURST, HPROT, HWDATA,
         input  HREADY, HRDATA, HRESP,
         clocking master_cb,
