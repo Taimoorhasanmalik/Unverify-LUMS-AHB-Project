@@ -38,7 +38,7 @@ imc:
 	imc -load test &
 
 formal_test:
-	MASTER_TEST=$(MASTER_TEST) jaspergold ahb_setup.tcl
+	MASTER_TEST=$(MASTER_TEST) jaspergold ahb_setup.tcl 
 
 regress:
 	@mkdir -p $(REGRESS) $(COVDIR)
