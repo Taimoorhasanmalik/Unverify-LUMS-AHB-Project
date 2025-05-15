@@ -60,6 +60,8 @@ module top;
     logic        HRESP;
 
 
+    assign HREADY = HREADYOUT;
+
     ahb3liten dut_inst (
         .HCLK   (HCLK),
         .HRESETn(HRESETn),

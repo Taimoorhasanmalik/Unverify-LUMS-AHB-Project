@@ -11,8 +11,8 @@ import ahb3lite_pkg::*;
 
 
 module ahb_properties_master  (
-    input logic        HCLK,
-    input logic        HRESETn,
+    output logic       HCLK,
+    output logic       HRESETn,
     input logic        HSEL,
     input logic [15:0] HADDR,
     input logic [1:0]  HTRANS,
@@ -27,16 +27,46 @@ module ahb_properties_master  (
     output logic        HRESP
 );
 
-// Slave eventually completes the transfer
-assume property (@(posedge HCLK)
-  disable iff (!HRESETn)
-  ##[1:$] HREADY);
+///---------------ASSUMPTIONS
 
-// Master must align word accesses
-assert property (@(posedge HCLK)
-  disable iff (!HRESETn)
-  (HTRANS inside {2'b10, 2'b11} && HSIZE == 3'b010 && HREADY) |->
-  (HADDR[1:0] == 2'b00));
+property reset_sequence_p;
+    @(posedge HCLK)
+    ##[0:2] !HRESETn ##1 $rose(HRESETn);
+endproperty
+assume_reset_sequence: assume property(reset_sequence_p);
+
+
+property HSIZE_valid_values_p;
+    @(posedge HCLK) disable iff (!HRESETn)
+    HSIZE inside {HSIZE_BYTE, HSIZE_HWORD, HSIZE_WORD};
+endproperty
+HSIZE_valid_values_as: assume property (HSIZE_valid_values_p);
+
+
+///---------------ASSERTIONS
+
+
+property htrans_valid_values_p;
+    @(posedge HCLK) disable iff (!HRESETn)
+    HTRANS inside {HTRANS_IDLE, HTRANS_BUSY, HTRANS_NONSEQ, HTRANS_SEQ};
+endproperty
+assert_htrans_valid: assert property(htrans_valid_values_p);
+
+property burst_stable_signals_p;
+    @(posedge HCLK) disable iff (!HRESETn)
+    (HTRANS == HTRANS_SEQ) |-> 
+    ($stable(HSIZE) && $stable(HBURST) && $stable(HWRITE));
+endproperty
+assert_burst_stable: assert property(burst_stable_signals_p);
+
+property write_data_stable_p;
+    @(posedge HCLK) disable iff (!HRESETn)
+    (HWRITE && !HREADY) |-> $stable(HWDATA);
+endproperty
+assert_write_data_stable: assert property(write_data_stable_p);
+
+
+
 
 
 endmodule
@@ -45,7 +75,7 @@ endmodule
 
 module ahb_properties_slave  (
     input logic        HCLK,
-    input logic        HRESETn,
+    output logic        HRESETn,
     output logic        HSEL,
     output logic [15:0] HADDR,
     output logic [1:0]  HTRANS,
@@ -60,29 +90,7 @@ module ahb_properties_slave  (
     input logic        HRESP
 );
 
-
-property successful_transfer;
-    @(posedge HCLK) HREADY |-> !HRESP;
-endproperty
-
-successful_transfer_as: assert property (successful_transfer) 
-    else $error("Assertion successful_transfer_as failed! at time [%0t]",$time);
-
-property transfer_pending;
-    @(posedge HCLK) !HREADY |-> !HRESP;
-endproperty
-
-transfer_pending_as: assert property (transfer_pending) 
-    else $error("Assertion transfer_pending_as failed! at time [%0t]",$time);
-
-
-property error_response;
-    @(posedge HCLK) !HREADY |-> HRESP ##1 HREADY;
-endproperty
-
-error_response_as: assert property (error_response) 
-    else $error("Assertion error_response failed! at time [%0t]",$time);
-
+///---------------ASSUMPTIONS
 
 property valid_addresses_burst_inc_4_p;
     @(posedge HCLK) HBURST == HBURST_WRAP4 || HBURST_INCR4 |->(HADDR % 4) == 0;
@@ -127,7 +135,71 @@ property inc_16_boundary_check_p;
     @(posedge HCLK) disable iff (!HRESETn) HBURST == HBURST_INCR16 |->  ((HADDR & !(16 * HSIZE)) <= HADDR <= (HADDR & !(16 * HSIZE)) + (16 * HSIZE));
 endproperty
 
-inc_16_boundary_check_p_as: assume property (inc_16_boundary_check_p);
+inc_16_boundary_check_as: assume property (inc_16_boundary_check_p);
+
+
+
+property HTRANS_after_single_burst_p;
+    @(posedge HCLK) disable iff (!HRESETn)
+    HBURST == HBURST_SINGLE |-> ##[0:$] HREADYOUT ##1 HTRANS == HTRANS_IDLE;
+endproperty
+
+HTRANS_after_single_burst_as: assume property (HTRANS_after_single_burst_p);
+
+
+property HSIZE_valid_values_p;
+    @(posedge HCLK) disable iff (!HRESETn)
+    HSIZE inside {HSIZE_BYTE, HSIZE_HWORD, HSIZE_WORD};
+endproperty
+HSIZE_valid_values_as: assume property (HSIZE_valid_values_p);
+
+
+property HSIZE_constant_throughout_burst_p;
+    @(posedge HCLK) disable iff (!HRESETn)
+    !$isunknown(HBURST) |-> $stable(HSIZE)[*0:$] ##0 $stable(HBURST);
+endproperty
+HSIZE_constant_throughout_burst_as: assume property (HSIZE_constant_throughout_burst_p);
+
+
+
+///---------------ASSERTIONS
+
+
+property idle_transfer_response_p;  
+    @(posedge HCLK) disable iff (!HRESETn) (HTRANS == HTRANS_IDLE) && HREADYOUT |-> !HRESP;
+endproperty
+
+idle_transfer_response_as: assert property (idle_transfer_response_p);
+
+property busy_transfer_response_p;
+    @(posedge HCLK) disable iff (!HRESETn) (HTRANS == HTRANS_BUSY) && HREADYOUT |-> !HRESP;
+endproperty
+
+busy_transfer_response_as: assert property (busy_transfer_response_p);
+
+
+property successful_transfer_p;
+    @(posedge HCLK) HREADY |-> ##[0:$] HREADY |-> !HRESP;
+endproperty
+
+successful_transfer_as: assert property (successful_transfer_p) 
+    else $error("Assertion successful_transfer_as failed! at time [%0t]",$time);
+
+property transfer_pending;
+    @(posedge HCLK) !HREADY |-> !HRESP[*0:$] ##0 HREADY;
+endproperty
+
+transfer_pending_as: assert property (transfer_pending) 
+    else $error("Assertion transfer_pending_as failed! at time [%0t]",$time);
+
+
+property error_response;
+    @(posedge HCLK) HREADY && HRESP |-> !HREADY ##1 HREADY && HRESP;
+endproperty
+
+error_response_as: assert property (error_response) 
+    else $error("Assertion error_response failed! at time [%0t]",$time);
+
 
 
 
