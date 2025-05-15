@@ -9,6 +9,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 import ahb3lite_pkg::*;
 
+`define VERIFY_SINGLE_TRANSFERS
 
 module ahb_properties_master  (
     output logic       HCLK,
@@ -91,7 +92,7 @@ module ahb_properties_slave  (
 );
 
 ///---------------ASSUMPTIONS
-
+`ifdef ASSUMPTIONS
 property valid_addresses_burst_inc_4_p;
     @(posedge HCLK) HBURST == HBURST_WRAP4 || HBURST_INCR4 |->(HADDR % 4) == 0;
 
@@ -199,8 +200,28 @@ endproperty
 
 error_response_as: assert property (error_response) 
     else $error("Assertion error_response failed! at time [%0t]",$time);
+`endif
 
+`ifdef VERIFY_SINGLE_TRANSFERS
+    // Assume complete single transfer input patterns
+    property assume_single_transfer_inputs_p;
+        @(posedge HCLK) disable iff (!HRESETn)
+        HSEL |-> (
+            HTRANS == HTRANS_NONSEQ &&
+            HSIZE inside {HSIZE_BYTE, HSIZE_HWORD, HSIZE_WORD} &&
+            HBURST == HBURST_SINGLE &&
+            HWDATA >= 0 &&  // Any valid data
+            HADDR inside {[0:16-1]}
+        );
+    endproperty
+    assume_single_transfer: assume property(assume_single_transfer_inputs_p);
 
-
+    // Assert only HREADY and HRESP behavior
+    property assert_single_transfer_response_p;
+        @(posedge HCLK) disable iff (!HRESETn)
+        (HTRANS == HTRANS_NONSEQ) |-> ##[1:4] (HREADYOUT && !HRESP);
+    endproperty
+    assert_single_transfer_response: assert property(assert_single_transfer_response_p);
+`endif
 
 endmodule
