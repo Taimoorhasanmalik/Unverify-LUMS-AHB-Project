@@ -97,11 +97,7 @@ module ahb_coverage (
             bins WRAP16  = {3'b110};
             bins INCR16  = {3'b111};
         }
-        cross_htype_burst: cross trans_cp, burst_cp {
-            ignore_bins invalid_combinations =
-            binsof(trans_cp) intersect {2'b00, 2'b01} ||
-            binsof(burst_cp) intersect {3'b000, 3'b001};
-        }
+        cross_htype_burst: cross trans_cp, burst_cp; 
     endgroup
 
 
@@ -122,10 +118,7 @@ module ahb_coverage (
             bins WRAP16  = {3'b110};
             bins INCR16  = {3'b111};
         }
-        cross_size_burst: cross size_cp, burst_cp {
-            ignore_bins illegal_combinations =
-            binsof(size_cp) intersect {3'b000};
-        }
+        cross_size_burst: cross size_cp, burst_cp; 
     endgroup
 
 
@@ -140,11 +133,7 @@ module ahb_coverage (
             bins HALFWORD = {3'b001};
             bins WORD     = {3'b010};
         }
-        cross_addr_size: cross addr_cp, size_cp {
-            ignore_bins illegal_combinations = 
-            binsof(addr_cp) intersect {[16'h0100 : 16'h0FFF]} &&
-            binsof(size_cp) intersect {3'b000};
-        }
+        cross_addr_size: cross addr_cp, size_cp;
     endgroup
 
 /// Instantiate covergroups
